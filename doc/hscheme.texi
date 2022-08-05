@@ -1,0 +1,405 @@
+\input texinfo
+@c -*-texinfo-*-
+
+@c %**start of header
+@setfilename hscheme.info
+@documentencoding UTF-8
+@settitle Hscheme Manual
+@c %**end of header
+
+@copying
+Copyright @copyright{} 2022 Maya Tomasek @*
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.  A
+copy of the license is included in the section entitled ``GNU Free
+Documentation License''.
+@end copying
+
+@titlepage
+@title Hscheme user and developer manual
+
+@page
+
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top Hscheme
+
+@end ifnottex
+
+@node User manual
+@chapter User manual
+@cindex Building from source
+
+@node Building from source
+@section Building from source
+
+@cindex Requirements
+@cindex Compiling
+
+@node Requirements
+@subsection Requirements
+
+Hscheme requires these programs and libraries to be present on your system:
+
+@itemize
+@item @command{ghc}
+@item @command{cabal}
+@item @command{readline} (the development package, usually ending with @code{-dev} or @code{-devel})
+@end itemize
+
+@cite{And you also need to get the source code!}
+
+@node Compiling installing and running
+@subsection Compiling, installing and running
+
+To compile hscheme you can use make.
+
+@example
+make
+@end example
+
+@cite{It's that simple!}
+
+@subsection Installation
+
+And to install it.
+
+@example
+make install DESTDIR=<your installation destination>
+@end example
+
+or just run it!
+
+@example
+make run
+@end example
+
+@node The REPL
+@section The REPL
+
+The REPL stands for read, eval, print, loop. What does that mean in practise? You can send commands to the hscheme interpreter and it returns you the value of that statement once it is evaluated. After that it once again awaits your input.
+
+This is the hscheme REPL.
+@example
+λ>
+@end example
+
+Just type your code into it and hscheme will reply what it evaluates to!
+
+@node Supported commands
+@section Supported commands
+
+@table @asis
+@item Essential functions
+@table @code
+@item eval
+@item quote
+@item quasiquote, unquote, unquote-splicing
+@item define
+@item set!
+@item load
+@item lambda
+@item let
+@item if
+@item print
+@end table
+
+@item Core functions
+@table @code
+@item car
+@item cdr
+@item cons
+@item length
+@item append
+@item last
+@item begin
+@item boolean?
+@item symbol?
+@item pair?
+@item number?
+@item integer?
+@item char?
+@item string?
+@item list?
+@item pair?
+@item null?
+@item procedure?
+@item +
+@item -
+@item *
+@item /
+@item =
+@item eq?
+@item eqv?
+@item equal?
+@item >
+@item <
+@item >=
+@item <=
+@item not
+@item assert
+@end table
+
+@item Prelude
+@table @code
+@item list
+@item cadr
+@item cdar
+@end table
+@end table
+
+@node Developer manual
+@chapter Developer manual
+
+@node Types module
+@section @code{Types} module
+
+@table @asis
+@item @code{Env}
+
+@code{Env} is a mutable (through @code{IORef}) list of maps, that ensures lexical scoping, the head of the list is the inner-most environment where symbols reside. If the symbol→value mapping is not found in that environment, it's parents get searched.
+
+@item @code{ScmValue}
+
+This type contains all available values within the scheme interpreter. @code{ScmRational}, @code{ScmReal}, @code{ScmComplex} are currently not implemented, but they should be really easy to plug in.
+
+This type provides facilities to wrap native haskell functions with a little bit of customisation. It also provides a generic value→string conversion capability.
+
+@item @code{ScmBoolean}
+@itemx @code{ScmInteger}
+@itemx @code{ScmRational}
+@itemx @code{ScmReal}
+@itemx @code{ScmComplex}
+@itemx @code{ScmCharacter}
+@itemx @code{ScmString}
+
+are pretty self explanatory
+
+@item @code{ScmSymbol}
+
+is internally the same as @code{ScmString} but it is upon evaluation used as a key for looking up symbol's value in the current environment.
+
+@item @code{ScmList}
+
+This provides the standard Scheme list, with an exception. (see the entry bellow about @code{ScmPair})
+
+@item @code{ScmPair}
+
+Contrary to Haskell, Scheme specification allows improper lists. Normal scheme list is @code{(a . (b . (c . ())))} but improper list @code{(a . (b . c))} where @code{a, b, c} are of any value.
+
+To support those improper lists, hscheme supplies the @code{ScmPair} value type to facilitate those needs.
+
+@item @code{ScmVector}
+
+The difference between @code{ScmVector} and @code{ScmList} is that @code{ScmVector} is similar to arrays in imperative languages. As it has @code{O(1)} access times, @code{ScmList} has @code{O(n)}.
+
+@item @code{ScmReturn}
+
+This type provide a monad capable of transfering state, IO actions, throw and catch exceptions and return values. It accepts one argument that is the payload value, that the monad wraps around. Most functions defined on @code{Except}, @code{State}, @code{IO} monads work as expected even here, if one is to use an IO action, simply wrap it with @code{liftIO}.
+
+@item Other utility functions
+
+These mostly provide a clean way to wrap functions in Haskell into the runtime. Keep in mind that if you want to make a list of @code{ScmValue} you cannot simply convert it to a list of @code{Integer}'s or similar, as that would break the strict Haskell type system. There is an implementation for @code{ScmConvertible} so you can convert @code{[Integer]} to @code{[ScmValue]}, but if you want to do it the other way arround, you need to take care that that list is consting only of @code{ScmInteger} otherwise it is a hard crash.
+
+@end table
+
+@node Reader module
+@section @code{Reader} module
+
+is responsible for parsing input either from the interactive prompt or a file. (It only supports parsing string, other functionallity is implemented in the @xref{Main module, @code{Main} module}.
+
+Hscheme uses @url{https://wiki.haskell.org/Parsec, Parsec} library to parse input. Parsec is somewhat special, as it consumes input even if it eventually fails the match. The architecture of hscheme's parser is modified to that architecture from the default Scheme parser and lexer.
+
+@table @code
+@item readStr
+
+Read one expression from the string and parse it.
+
+@item readMany
+
+Read all the expressions in the string and parse them.
+
+@item datum
+
+This is the root rule, all syntactic concepts are defined here.
+
+@item syntax
+
+Parse @code{#'expr} into @code{(syntax expr)}.
+
+@item stringElement
+
+Parse string elements, automatically unescape characters.
+
+@item quote
+
+Parse @code{'expr} into @code{(quote expr)}.
+
+@item quasiquote
+
+Parse @code{`expr} into @code{(quasiquote expr)}.
+
+@item unquote
+
+Parse @code{,expr} into @code{(unquote expr)}.
+
+@item unquoteSplicing
+
+Parse @code{,@@expr} into @code{(unquote-splicing expr)}.
+
+@item pair
+
+Parse pairs and improper lists into @code{ScmPair}.
+
+@item list
+
+Parse lists.
+
+@item vector
+
+Parse vectors.
+
+@item peculiar
+
+Parse peculiar identifiers.
+
+@item sym
+
+Parse symbols.
+
+@item subsequent
+@itemx initial
+@itemx specialInitial
+@itemx specialSubsequent
+
+Helper functions for @code{sym}
+
+@item number
+
+Parse numbers. Currently only integers are supported.
+
+@item space'
+
+Modified Parsec @code{space} that matches multiline scheme comments.
+
+@item spaces1, spaces
+
+Helpers for matching multiple spaces.
+
+@item readInBase
+@itemx readFloat
+
+Currently unused. For a future use when other number types are supported.
+
+@end table
+
+@node Repl module
+@section @code{Repl} module
+
+provides functions that are strictly required for hscheme to actually be a lisp and also to be a programming language. These are mostly functions that do not evaluate their arguments. In traditional sense you would regard them as macros, but they are not macros as they mostly provide a way to modify the environment, or manipulate the evaluation process itself.
+
+These functions corespond to their Scheme definitions, reading the R5RS specification and the source code should be enough to understand them.
+
+@node Core module
+@section @code{Core} module
+
+@table @asis
+
+@item @code{pred}
+
+Convert a function tha takes a list of @code{ScmValue} and returns some value to a @code{(String, ScmFunction)}.
+
+@item @code{predM}
+
+Wrap function that is already in hscheme format, but does not use the @code{ScmReturn} type.
+
+@item @code{pred1}
+@itemx @code{pred2}
+
+Convert a function that takes exactly 1 (or 2) arguments into a @code{(String, ScmFunction)}.
+
+@item @code{pred2R}
+
+Convert a function that takes 2 fixed arguments and a rest argument into @code{(String, ScmFunction)}
+
+@item @code{pred2All}
+
+Convert a function that takes 2 arguments and convert it into a @code{foldl} inside of a @code{ScmFunction}.
+
+@item Base Types
+
+These functios provide checking for @code{ScmValue}'s type.
+
+@item Base list operations
+
+Manipulate lists.
+
+@item Arithmetic
+
+Basic math operations, currently only on @code{ScmInteger}s.
+
+@item Logical
+
+Equality and boolean algebra.
+
+@item @code{assert}
+
+A function for writing tests in scheme.
+
+@item @code{prelude}
+
+A list of all functions available in the core of the language. These always are imported automatically.
+
+@end table
+
+@node Main module
+@section @code{Main} module
+
+@table @code
+
+@item historyFile
+@itemx loadHistory
+@itemx addHistory
+
+Save command history in interactive mode.
+
+@item repl
+
+Run hscheme interactively. This is using the GNU Readline software for a much better experience.
+
+@item init
+
+Initialize the runtime environment. Load @code{lib/Prelude.scm}.
+
+@item run
+
+Run file non interactively.
+
+@item interactive
+
+Start @code{init}, set up the environment.
+
+@item menu
+
+The command menu, this is where the mode interactive/files are switched.
+
+@item main
+
+The root function, this is called upon running the executable.
+
+@end table
+
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@bye
