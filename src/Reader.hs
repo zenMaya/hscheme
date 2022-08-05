@@ -30,11 +30,11 @@ datum =
   <|> quote
   <|> quasiquote
   <|> try unquote
-  <|> unquote_splicing
+  <|> unquoteSplicing
   <|> peculiar
   <|> sym
   <|> number
-  
+
 syntax :: Parser ScmValue
 syntax = do
   d <- string "#'" *> datum
@@ -71,8 +71,8 @@ unquote = do
   d <- datum
   return $ ScmList [ScmSymbol "unquote", d]
 
-unquote_splicing :: Parser ScmValue
-unquote_splicing = do
+unquoteSplicing :: Parser ScmValue
+unquoteSplicing = do
   string ",@"
   d <- datum
   return $ ScmList [ScmSymbol "unquote-splicing", d]
@@ -81,8 +81,7 @@ pair = do
   car <- many (datum <* spaces1)
   char '.'
   spaces1
-  cdr <- datum
-  return $ ScmPair car cdr
+  ScmPair car <$> datum
 
 list :: Parser ScmValue
 list = ScmList <$> sepBy datum spaces1
@@ -90,7 +89,7 @@ list = ScmList <$> sepBy datum spaces1
 vector =
   ScmVector . V.fromList <$> sepBy datum spaces1
 
-peculiar = ScmSymbol <$> try (string "+" <|> string "-" <|> string "..." <|> arrow)  
+peculiar = ScmSymbol <$> try (string "+" <|> string "-" <|> string "..." <|> arrow)
   where
     arrow :: Parser String
     arrow = do
@@ -114,108 +113,9 @@ number :: Parser ScmValue
 number = do
   d <- many1 digit
   return $ ScmInteger (read d)
-  -- do
-  -- (base, _) <- prefix
-  -- choice
-  --   [ complex base,
-  --     ScmReal <$> real base,
-  --     rational base,
-  --     ScmInteger <$> Reader.integer base
-  --   ]
-
--- complex :: Int -> Parser ScmValue
--- complex i = do
---   re <- real i
---   spaces
---   im <- imaginary i
---   return $ ScmComplex re im
-
--- imaginary :: Int -> Parser Float
--- imaginary i = option 1.0 (real i) <* spaces <* char 'i'
-
--- real :: Int -> Parser Float
--- real i = do
---   s <- sign
---   (n, d) <- (real_ <|> dec <|> nat)
---   return 
---   where
---     real_ i = do
---       nat <- uinteger i
---       char '.'
---       dec <- uinteger i
---       return (nat, dec)
---     dec i = (0, char '.' *> uinteger i)
---     nat i = (uinteger i <* char '.', 0)
-
--- rational i = do
---   n <- Reader.integer i
---   char '/'
---   d <- uinteger i
---   return $ ScmRational n d
-
--- integer :: Int -> Parser Integer
--- integer i = do
---   s <- optionMaybe sign
---   u <- uinteger i
---   return $ case s of
---     (Just '-') -> (-u)
---     _ -> u
-
--- uinteger :: Int -> Parser Integer
--- uinteger i = do
---   n <- many1 $ digit' i
---   return (readInBase i n)
-
--- type Prefix = (Int, Exactness)
-
--- prefix :: Parser Prefix
--- prefix = do pre <|> post
---   where
---     pre = do
---       r <- radix
---       e <- exactness
---       return (r, e)
---     post = do
---       e <- exactness
---       r <- radix
---       return (r, e)
-
--- type Exponent = Integer
-
--- suffix :: Parser Exponent
--- suffix = exponentMarker *> Reader.integer 10
-
--- exponentMarker = oneOf "eEsSfFdDlL"
-
--- mantissaWidth = optionMaybe $ many1 $ digit' 10
-
--- sign = char '+' <|> char '-'
-
--- data Exactness = Inexact | Exact
-
--- exactness =
---   choice
---     [ Exact <$ (string "#e" <|> string "#E"),
---       Inexact <$ (string "#i" <|> string "#I")
---     ]
-
--- radix :: Parser Int
--- radix =
---   choice
---     [ 2 <$ (string "#b" <|> string "#B"),
---       8 <$ (string "#o" <|> string "#O"),
---       16 <$ (string "#x" <|> string "#X"),
---       10 <$ (string "#d" <|> string "#D" <|> string "")
---     ]
-
--- digit' :: Int -> Parser Char
--- digit' 2 = oneOf "01"
--- digit' 8 = octDigit
--- digit' 10 = digit
--- digit' 16 = hexDigit
 
 space' :: Parser ()
-space' =  void ( space <|> (between (try $ string "#|") (string "|#") anyChar) <|> (between (char ';') endOfLine anyChar))
+space' =  void ( space <|> between (try $ string "#|") (string "|#") anyChar <|> between (char ';') endOfLine anyChar)
 
 spaces1 :: Parser ()
 spaces1 = skipMany1 space'
@@ -232,4 +132,4 @@ readInBase b n = readInBase_ b n 0
     readInBase_ b (x : xs) acc = readInBase_ b xs $ acc * toInteger b + toInteger (digitToInt x)
 
 readFloat :: Integer -> Integer -> Integer -> Integer -> Float
-readFloat s d r e = read $ show (d * e * toInteger s) ++ "." ++ show r 
+readFloat s d r e = read $ show (d * e * toInteger s) ++ "." ++ show r

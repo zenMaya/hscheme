@@ -16,6 +16,8 @@ import Data.List
 import Data.IORef (readIORef)
 import GHC.Stack (errorWithStackTrace)
 
+-- walk the list and quote every atom
+-- if expression is unquote, don't quote it
 quasiquote :: ScmValue -> ScmReturn [ScmValue]
 quasiquote (ScmList []) = return []
 quasiquote (ScmList ((ScmList ((ScmSymbol "unquote"):v:_)):rest)) = do
@@ -50,7 +52,7 @@ scmIf (cond:t:[]) = do
     Just (ScmBoolean True) -> eval t
     Just (ScmBoolean False) -> return Nothing
     Nothing -> throwE "Condition must evaluate to a boolean value!"
-  
+
 scmLet :: [ScmValue] -> ScmReturn (Maybe ScmValue)
 scmLet ((ScmList binds):exprs) = do
   newEnv
@@ -94,7 +96,7 @@ lambda ((ScmList binds):body) = do
   where
     bind :: [String] -> [ScmValue] -> ScmReturn ()
     bind [] [] = return ()
-    bind [] vs = throwE ("Incorrect number of arguments to a function (" ++ concat (intersperse " " (map show vs)) ++ ")")
+    bind [] vs = throwE ("Incorrect number of arguments to a function (" ++ unwords (map show vs) ++ ")")
     bind ss [] = throwE "Missing arguments to a function"
     bind (s:ss) (v:vs) = insertEnv s v >> bind ss vs
 lambda ((ScmPair binds rest):body) = do
@@ -114,8 +116,8 @@ lambda ((ScmPair binds rest):body) = do
     bind [] r vs = insertEnv r (ScmList vs)
     bind ss r [] = throwE "Missing arguments to a function"
     bind (s:ss) r (v:vs) = insertEnv s v >> bind ss r vs
-lambda vs = throwE ("Incorrect arguments to lambda definition (" ++ concat (intersperse " " $ map show vs) ++ ")")
-    
+lambda vs = throwE ("Incorrect arguments to lambda definition (" ++ unwords (map show vs) ++ ")")
+
 trySymbol :: ScmValue -> ScmReturn String
 trySymbol (ScmSymbol s) = return s
 trySymbol v = throwE ("Lambda binding must be a symbol, not a: `" ++ show v ++ "`")
@@ -127,10 +129,10 @@ define [s@(ScmSymbol symbol),value] = do
       Just v -> insertEnv symbol v
       Nothing -> throwE ("define `" ++ symbol ++ "` doesn't have a value!")
 define ((ScmList (symbol@(ScmSymbol _):params)):value) = do
-  function <- lambda ((ScmList (params)):value)
+  function <- lambda (ScmList params:value)
   define [symbol, function]
 define ((ScmPair (symbol@(ScmSymbol _):params) rest):body) = do
-  function <- lambda ((ScmPair (params) rest):body)
+  function <- lambda (ScmPair params rest:body)
   define [symbol, function]
 define e = throwE $ show e
 
@@ -142,7 +144,6 @@ set [ScmSymbol symbol,value] = do
     (_, Nothing) -> throwE ("Cannot set! symbol " ++ symbol ++ " because it has to be defined first!")
     (Nothing, _) -> throwE "set! expression must evaluate to a value"
     (Just value, Just _) -> insertEnv symbol value
-    
 
 load :: [ScmValue] -> ScmReturn ()
 load [] = return ()
@@ -153,17 +154,17 @@ load xs = () <$ mapM loadFile xs
       file <- liftIO $ readFile filename
       exprs <- readMany file
       () <$ mapM eval exprs
-    
+
 eval :: ScmValue -> ScmReturn (Maybe ScmValue)
 eval exp@(ScmList (car:cdr)) = do
   case car of
     ScmSymbol "eval" -> eval $ head cdr
     ScmSymbol "quote" -> case cdr of
-      (caar:[]) -> return $ Just caar
+      [caar] -> return $ Just caar
       _ -> throwE "Cannot quote more than one argument"
     ScmSymbol "quasiquote" -> case cdr of
-      (caar@(ScmList _):[]) -> Just . ScmList <$> quasiquote caar
-      (other:[]) -> return $ Just other
+      [caar@(ScmList _)] -> Just . ScmList <$> quasiquote caar
+      [other] -> return $ Just other
       _ -> throwE "Cannot quasiquote more than one argument"
     ScmSymbol "define" -> Nothing <$ define cdr
     ScmSymbol "set!" -> Nothing <$ set cdr
@@ -211,7 +212,7 @@ scmRead :: ScmValue -> ScmReturn ScmValue
 scmRead (ScmString str) = readStr str
 
 scmDisplay :: ScmValue -> ScmReturn ()
-scmDisplay = liftIO . putStrLn . show 
+scmDisplay = liftIO . print
 
 scmPrint :: String -> ScmReturn ()
-scmPrint = liftIO . putStrLn 
+scmPrint = liftIO . putStrLn

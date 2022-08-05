@@ -10,9 +10,9 @@ import Control.Monad.Trans.Except (throwE)
 -- Helpers
 
 pred :: (Scm a) => String -> ([ScmValue] -> a) -> (String, ScmValue)
-pred name f = (name, ScmFunction (\v -> return . Just $ scmFrom $ f v))
+pred name f = (name, ScmFunction (return . Just . scmFrom . f))
 
-predM name f = (name, ScmFunction (\v -> return $ f v))
+predM name f = (name, ScmFunction (return . f))
 
 pred1 :: (Scm a) => String -> (ScmValue -> a) -> (String, ScmValue)
 pred1 name f = (name, ScmFunction (\[v] -> return . Just $ scmFrom $ f v))
@@ -24,7 +24,7 @@ pred2R :: (Scm a) => String -> (ScmValue -> ScmValue -> [ScmValue] -> a) -> (Str
 pred2R name f = (name, ScmFunction (\(a:b:r) -> return $ Just $ scmFrom $ f a b r))
 
 pred2All :: String -> (ScmValue -> ScmValue -> Bool) -> (String, ScmValue)
-pred2All name f = (name, ScmFunction (\l -> return $ Just $ scmFrom $ pred2AllInner f l))
+pred2All name f = (name, ScmFunction (return . Just . scmFrom . pred2AllInner f))
   where
     pred2AllInner f [_] = True
     pred2AllInner f (x:y:xs) = if f x y then pred2AllInner f (y:xs) else False
@@ -109,23 +109,23 @@ last l = (Just . Prelude.last) l
 
 -- Arithmetic
 add :: [ScmValue] -> ScmValue
-add l = foldl1 innerAdd l
+add = foldl1 innerAdd
   where
     innerAdd :: ScmValue -> ScmValue -> ScmValue
     innerAdd (ScmInteger a) (ScmInteger b) = ScmInteger $ a + b
 
 sub :: [ScmValue] -> ScmValue
-sub l = foldl1 innerSub l
+sub = foldl1 innerSub
   where
     innerSub (ScmInteger a) (ScmInteger b) = ScmInteger $ a - b
 
 mul :: [ScmValue] -> ScmValue
-mul l = foldl1 innerMul l
+mul = foldl1 innerMul
   where
     innerMul (ScmInteger a) (ScmInteger b) = ScmInteger $ a * b
 
 div' :: [ScmValue] -> ScmValue
-div' l = foldl1 innerDiv l
+div' = foldl1 innerDiv
   where
     innerDiv (ScmInteger a) (ScmInteger b) = ScmInteger $ a `div` b
 
@@ -152,9 +152,9 @@ eqv (ScmString a) (ScmString b) = a == b
 eqv a b = eq a b
 
 equal :: ScmValue -> ScmValue -> Bool
-equal (ScmList a) (ScmList b) = all id $ zipWith equal a b
-equal (ScmVector a) (ScmVector b) = all id $ Data.Vector.zipWith equal a b
-equal (ScmPair a b) (ScmPair c d) = (all id $ zipWith equal a c) && (equal b d)
+equal (ScmList a) (ScmList b) = and $ zipWith equal a b
+equal (ScmVector a) (ScmVector b) = and $ Data.Vector.zipWith equal a b
+equal (ScmPair a b) (ScmPair c d) = and (zipWith equal a c) && equal b d
 equal a b = eqv a b
 
 ($>) :: ScmValue -> ScmValue -> Bool

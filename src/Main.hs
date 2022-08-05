@@ -1,6 +1,4 @@
 module Main where
-
-import Control.Monad (void, when)
 import Control.Monad.State (StateT, evalStateT, liftIO, get, put)
 import Core
 import Reader
@@ -9,12 +7,10 @@ import qualified System.Console.Readline as Readline
 import System.Directory (getHomeDirectory, doesFileExist)
 import System.IO.Error (tryIOError)
 import Types
-import Control.Monad (liftM)
 import Control.Monad.Trans.Class
 import Control.Monad.Except (ExceptT)
 import Control.Monad.Trans.Maybe (MaybeT(runMaybeT), mapMaybeT)
 import Control.Monad.Trans.Except (runExceptT, catchE)
-import Control.Monad.Trans.Except (runExcept)
 import Control.Monad.State.Lazy (StateT(runStateT))
 import qualified Data.Map.Strict as Map
 import Data.IORef (readIORef)
@@ -40,18 +36,21 @@ addHistory line = do
   _  <- tryIOError (appendFile h (line ++ "\n"))
   Readline.addHistory line
 
+-- Read -> Eval -> Print -> Loop
 repl :: ScmReturn ()
 repl = do
   line <- liftIO $ Readline.readline "λ> "
   case line of
     Nothing -> return ()
     Just "" -> return ()
+    -- Print current bound symbols and their values
     Just ":binds" -> do
       env <- get
-      mapM (\e -> do
+      mapM_ (\e -> do
                env <- liftIO $ readIORef e
-               mapM (\(k,v) -> liftIO $ putStrLn ("(" ++ k ++ " " ++ show v ++ ")")) $ Map.toList env) env
-      return ()
+               mapM (\(k,v) -> liftIO $ putStrLn ("(" ++ k ++ " " ++ show v ++ ")")) $ Map.toList env)
+        env
+    -- Read the input, parse it, evaluate it and print the result
     Just str -> do
       liftIO $ addHistory str
       catchE (do
@@ -62,6 +61,8 @@ repl = do
                 scmPrint
   repl
 
+
+-- Initialize the environment
 init :: ScmReturn ()
 init = do
   bind prelude
@@ -72,6 +73,7 @@ init = do
       bind [] = return ()
       bind ((name, val):binds) = insertEnv name val >> bind binds
 
+-- Run file
 run :: String -> IO ()
 run str = do
   rootEnv <- emptyEnv
@@ -82,7 +84,8 @@ run str = do
   where
     bind [] = return ()
     bind ((key, val):binds) = insertEnv key val >> bind binds
- 
+
+-- Run in interactive mode
 interactive :: IO ()
 interactive = do
   loadHistory
@@ -92,13 +95,13 @@ interactive = do
     Left e -> putStrLn e
     _ -> return ()
 
+-- If the executable was provided with arguments, treat them as source files and execute them
+-- otherwise start interactive mode
 menu :: [String] -> IO ()
 menu [] = interactive
-menu files = do
-  mapM (\file -> run ("(load \"" ++ file ++ "\")")) files
-  pure ()
+menu files = mapM_ (\file -> run ("(load \"" ++ file ++ "\")")) files
 
 main :: IO ()
 main = getArgs >>= menu
-  
- 
+
+

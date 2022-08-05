@@ -9,51 +9,59 @@ module Types where
 import qualified Data.Map.Strict as Map
 import qualified Data.Vector as V
 import Control.Monad (liftM)
-import Control.Monad.State (runStateT, MonadState (put))
-import Control.Monad.State (mapState)
-import Control.Monad.State (mapStateT)
+import Control.Monad.State
+    ( runStateT,
+      MonadState(put),
+      mapState,
+      mapStateT,
+      get,
+      withStateT,
+      evalStateT,
+      modify )
 import Control.Monad.State.Lazy (StateT)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
 import Control.Monad.Except (ExceptT)
 import qualified Control.Monad.Trans.Except
-import Control.Monad.State (get)
-import Control.Monad.State (withStateT)
-import Control.Monad.State (evalStateT)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.IORef
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (modify)
 import Text.Parsec (Stream (uncons))
 import Data.List (intersperse)
 
 type Env = [IORef (Map.Map String ScmValue)]
 
+-- create new empty environment
 emptyEnv :: IO Env
 emptyEnv = do
   e <- newIORef Map.empty
   return [e]
 
+-- create new child environment (for example for let)
 newEnv :: ScmReturn ()
 newEnv = do
   es <- get
   e <- liftIO $ newIORef Map.empty
   put (e:es)
 
+-- leave current environment into the parrent environment
 leaveEnv :: ScmReturn ()
 leaveEnv = do
   (e:es) <- get
   put es
 
+-- bind symbol with a value
 insertEnv :: String -> ScmValue -> ScmReturn ()
 insertEnv k v = do
   (e:es) <- get
   liftIO $ modifyIORef e $ Map.insert k v
 
+-- resolve symbol to a value
 getEnv :: String -> ScmReturn (Maybe ScmValue)
 getEnv k = do
   ee <- get
   case ee of
+    -- the environment is empty
     [] -> return Nothing
     (e:es) -> do
       m <- liftIO $ readIORef e
@@ -64,11 +72,6 @@ getEnv k = do
           put (e:es)
           return v
         v -> return v
-
-data ScmExtension
-  = ScmPatternVar ScmValue
-  | ScmLiteral String
-  | ScmEllipsis [ScmValue]
 
 data ScmValue
   = ScmBoolean Bool
@@ -103,22 +106,8 @@ instance {-# OVERLAPS #-} Show (Maybe ScmValue) where
 class Scm a where
   scmFrom :: a -> ScmValue
   scmTo :: ScmValue -> a
-  
-fromScmInteger (ScmInteger a) = a
-
-fromScmRational (ScmRational a b) = (a, b)
-
-fromScmReal (ScmReal a) = a
 
 type ScmReturn a = ExceptT String (StateT Env IO) a
---type ScmEturn a = ExceptT String (StateT Env IO) a
-      
---catchE m h = (lift $ Control.Monad.Trans.Except.catchE) m h
-
-instance (Monad m) => Stream  ScmValue m ScmValue where
-  uncons (ScmList (x:xs)) = return $ Just $ (x, ScmList xs)
-  uncons (ScmList []) = return Nothing
-  uncons _ = return Nothing
 
 data ScmConvertible = forall s. Scm s => ScmC s
 
