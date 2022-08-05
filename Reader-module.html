@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Copyright (C) 2022 Maya Tomasek 
+
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License". -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Reader module (Hscheme Manual)</title>
+
+<meta name="description" content="Reader module (Hscheme Manual)">
+<meta name="keywords" content="Reader module (Hscheme Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Developer-manual.html" rel="up" title="Developer manual">
+<link href="Repl-module.html" rel="next" title="Repl module">
+<link href="Types-module.html" rel="prev" title="Types module">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+<link rel="stylesheet" type="text/css" href="https://www.gnu.org/software/gnulib/manual.css">
+
+
+</head>
+
+<body lang="en">
+<span id="Reader-module"></span><div class="header">
+<p>
+Next: <a href="Repl-module.html" accesskey="n" rel="next">Repl module</a>, Previous: <a href="Types-module.html" accesskey="p" rel="prev">Types module</a>, Up: <a href="Developer-manual.html" accesskey="u" rel="up">Developer manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Reader-module-1"></span><h3 class="section">2.2 <code>Reader</code> module</h3>
+
+<p>is responsible for parsing input either from the interactive prompt or a file. (It only supports parsing string, other functionallity is implemented in the See <a href="Main-module.html"><code>Main</code> module</a>.
+</p>
+<p>Hscheme uses <a href="https://wiki.haskell.org/Parsec">Parsec</a> library to parse input. Parsec is somewhat special, as it consumes input even if it eventually fails the match. The architecture of hscheme&rsquo;s parser is modified to that architecture from the default Scheme parser and lexer.
+</p>
+<dl compact="compact">
+<dt><code>readStr</code></dt>
+<dd>
+<p>Read one expression from the string and parse it.
+</p>
+</dd>
+<dt><code>readMany</code></dt>
+<dd>
+<p>Read all the expressions in the string and parse them.
+</p>
+</dd>
+<dt><code>datum</code></dt>
+<dd>
+<p>This is the root rule, all syntactic concepts are defined here.
+</p>
+</dd>
+<dt><code>syntax</code></dt>
+<dd>
+<p>Parse <code>#'expr</code> into <code>(syntax expr)</code>.
+</p>
+</dd>
+<dt><code>stringElement</code></dt>
+<dd>
+<p>Parse string elements, automatically unescape characters.
+</p>
+</dd>
+<dt><code>quote</code></dt>
+<dd>
+<p>Parse <code>'expr</code> into <code>(quote expr)</code>.
+</p>
+</dd>
+<dt><code>quasiquote</code></dt>
+<dd>
+<p>Parse <code>`expr</code> into <code>(quasiquote expr)</code>.
+</p>
+</dd>
+<dt><code>unquote</code></dt>
+<dd>
+<p>Parse <code>,expr</code> into <code>(unquote expr)</code>.
+</p>
+</dd>
+<dt><code>unquoteSplicing</code></dt>
+<dd>
+<p>Parse <code>,@expr</code> into <code>(unquote-splicing expr)</code>.
+</p>
+</dd>
+<dt><code>pair</code></dt>
+<dd>
+<p>Parse pairs and improper lists into <code>ScmPair</code>.
+</p>
+</dd>
+<dt><code>list</code></dt>
+<dd>
+<p>Parse lists.
+</p>
+</dd>
+<dt><code>vector</code></dt>
+<dd>
+<p>Parse vectors.
+</p>
+</dd>
+<dt><code>peculiar</code></dt>
+<dd>
+<p>Parse peculiar identifiers.
+</p>
+</dd>
+<dt><code>sym</code></dt>
+<dd>
+<p>Parse symbols.
+</p>
+</dd>
+<dt><code>subsequent</code></dt>
+<dt><code>initial</code></dt>
+<dt><code>specialInitial</code></dt>
+<dt><code>specialSubsequent</code></dt>
+<dd>
+<p>Helper functions for <code>sym</code>
+</p>
+</dd>
+<dt><code>number</code></dt>
+<dd>
+<p>Parse numbers. Currently only integers are supported.
+</p>
+</dd>
+<dt><code>space'</code></dt>
+<dd>
+<p>Modified Parsec <code>space</code> that matches multiline scheme comments.
+</p>
+</dd>
+<dt><code>spaces1, spaces</code></dt>
+<dd>
+<p>Helpers for matching multiple spaces.
+</p>
+</dd>
+<dt><code>readInBase</code></dt>
+<dt><code>readFloat</code></dt>
+<dd>
+<p>Currently unused. For a future use when other number types are supported.
+</p>
+</dd>
+</dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Repl-module.html" accesskey="n" rel="next">Repl module</a>, Previous: <a href="Types-module.html" accesskey="p" rel="prev">Types module</a>, Up: <a href="Developer-manual.html" accesskey="u" rel="up">Developer manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

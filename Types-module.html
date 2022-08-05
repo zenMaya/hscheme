@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Copyright (C) 2022 Maya Tomasek 
+
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.  A
+copy of the license is included in the section entitled "GNU Free
+Documentation License". -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Types module (Hscheme Manual)</title>
+
+<meta name="description" content="Types module (Hscheme Manual)">
+<meta name="keywords" content="Types module (Hscheme Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<link href="index.html" rel="start" title="Top">
+<link href="Index.html" rel="index" title="Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Developer-manual.html" rel="up" title="Developer manual">
+<link href="Reader-module.html" rel="next" title="Reader module">
+<link href="Developer-manual.html" rel="prev" title="Developer manual">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+ul.no-bullet {list-style: none}
+-->
+</style>
+<link rel="stylesheet" type="text/css" href="https://www.gnu.org/software/gnulib/manual.css">
+
+
+</head>
+
+<body lang="en">
+<span id="Types-module"></span><div class="header">
+<p>
+Next: <a href="Reader-module.html" accesskey="n" rel="next">Reader module</a>, Up: <a href="Developer-manual.html" accesskey="u" rel="up">Developer manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Types-module-1"></span><h3 class="section">2.1 <code>Types</code> module</h3>
+
+<dl compact="compact">
+<dt><code>Env</code></dt>
+<dd>
+<p><code>Env</code> is a mutable (through <code>IORef</code>) list of maps, that ensures lexical scoping, the head of the list is the inner-most environment where symbols reside. If the symbol→value mapping is not found in that environment, it&rsquo;s parents get searched.
+</p>
+</dd>
+<dt><code>ScmValue</code></dt>
+<dd>
+<p>This type contains all available values within the scheme interpreter. <code>ScmRational</code>, <code>ScmReal</code>, <code>ScmComplex</code> are currently not implemented, but they should be really easy to plug in.
+</p>
+<p>This type provides facilities to wrap native haskell functions with a little bit of customisation. It also provides a generic value→string conversion capability.
+</p>
+</dd>
+<dt><code>ScmBoolean</code></dt>
+<dt><code>ScmInteger</code></dt>
+<dt><code>ScmRational</code></dt>
+<dt><code>ScmReal</code></dt>
+<dt><code>ScmComplex</code></dt>
+<dt><code>ScmCharacter</code></dt>
+<dt><code>ScmString</code></dt>
+<dd>
+<p>are pretty self explanatory
+</p>
+</dd>
+<dt><code>ScmSymbol</code></dt>
+<dd>
+<p>is internally the same as <code>ScmString</code> but it is upon evaluation used as a key for looking up symbol&rsquo;s value in the current environment.
+</p>
+</dd>
+<dt><code>ScmList</code></dt>
+<dd>
+<p>This provides the standard Scheme list, with an exception. (see the entry bellow about <code>ScmPair</code>)
+</p>
+</dd>
+<dt><code>ScmPair</code></dt>
+<dd>
+<p>Contrary to Haskell, Scheme specification allows improper lists. Normal scheme list is <code>(a . (b . (c . ())))</code> but improper list <code>(a . (b . c))</code> where <code>a, b, c</code> are of any value.
+</p>
+<p>To support those improper lists, hscheme supplies the <code>ScmPair</code> value type to facilitate those needs.
+</p>
+</dd>
+<dt><code>ScmVector</code></dt>
+<dd>
+<p>The difference between <code>ScmVector</code> and <code>ScmList</code> is that <code>ScmVector</code> is similar to arrays in imperative languages. As it has <code>O(1)</code> access times, <code>ScmList</code> has <code>O(n)</code>.
+</p>
+</dd>
+<dt><code>ScmReturn</code></dt>
+<dd>
+<p>This type provide a monad capable of transfering state, IO actions, throw and catch exceptions and return values. It accepts one argument that is the payload value, that the monad wraps around. Most functions defined on <code>Except</code>, <code>State</code>, <code>IO</code> monads work as expected even here, if one is to use an IO action, simply wrap it with <code>liftIO</code>.
+</p>
+</dd>
+<dt>Other utility functions</dt>
+<dd>
+<p>These mostly provide a clean way to wrap functions in Haskell into the runtime. Keep in mind that if you want to make a list of <code>ScmValue</code> you cannot simply convert it to a list of <code>Integer</code>&rsquo;s or similar, as that would break the strict Haskell type system. There is an implementation for <code>ScmConvertible</code> so you can convert <code>[Integer]</code> to <code>[ScmValue]</code>, but if you want to do it the other way arround, you need to take care that that list is consting only of <code>ScmInteger</code> otherwise it is a hard crash.
+</p>
+</dd>
+</dl>
+
+<hr>
+<div class="header">
+<p>
+Next: <a href="Reader-module.html" accesskey="n" rel="next">Reader module</a>, Up: <a href="Developer-manual.html" accesskey="u" rel="up">Developer manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>
