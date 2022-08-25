@@ -30,6 +30,6 @@ executable hscheme
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base, parsec, containers, readline, directory, vector, mtl, transformers
+    build-depends:    base, parsec, containers, haskeline, directory, vector, mtl, transformers
     hs-source-dirs:   app
     default-language: Haskell2010

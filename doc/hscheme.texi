@@ -52,7 +52,8 @@ Hscheme requires these programs and libraries to be present on your system:
 @itemize
 @item @command{ghc}
 @item @command{cabal}
-@item @command{readline} (the development package, usually ending with @code{-dev} or @code{-devel})
+@c No longer required
+@c @item @command{readline} (the development package, usually ending with @code{-dev} or @code{-devel})
 @end itemize
 
 @cite{And you also need to get the source code!}
@@ -373,7 +374,7 @@ Save command history in interactive mode.
 
 @item repl
 
-Run hscheme interactively. This is using the GNU Readline software for a much better experience.
+Run hscheme interactively. @c REMOVED: This is using the GNU Readline software for a much better experience.
 
 @item init
 
